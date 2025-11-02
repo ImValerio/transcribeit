@@ -1,9 +1,8 @@
-from faster_whisper import WhisperModel
-from faster_whisper import BatchedInferencePipeline
-from tqdm import tqdm
 import sys
 from pathlib import Path
 
+from faster_whisper import BatchedInferencePipeline, WhisperModel
+from tqdm import tqdm
 
 if len(sys.argv) < 2:
     print("You need to specify the audio's path.")
@@ -14,7 +13,7 @@ if len(sys.argv) < 3:
     sys.exit()
 
 model = WhisperModel(
-    "turbo",
+    sys.argv[3] if len(sys.argv) > 3 else "turbo",
     device="cuda",
     compute_type="float16",
     num_workers=4,
@@ -37,7 +36,7 @@ segments, info = pipe.transcribe(
     vad_filter=True,  # filtra i silenzi
     chunk_length=30,  # dimensione dei chunk in secondi
     batch_size=16,  # numero di chunk elaborati per passaggio
-    language=sys.argv[3] if len(sys.argv) > 3 else None,  # lingua del testo trascritto
+    language=sys.argv[4] if len(sys.argv) > 4 else None,  # lingua del testo trascritto
 )
 
 segments = list(segments)
