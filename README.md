@@ -47,7 +47,7 @@ Run NextJs locally:
 
 ## Python script
 
-Could be used stand-alone, takes in input some arguments:
+It could be used stand-alone, takes in input some arguments:
 
 1. input file path (required)
 2. output file path (required)
