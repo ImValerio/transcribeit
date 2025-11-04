@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -79,8 +80,9 @@ func (th *TranscribeHandler) UploadAudio(w http.ResponseWriter, r *http.Request)
 
 	utils.WriteJSON(w, http.StatusOK, utils.Envelope{"audio_id": audioID})
 }
-
 func (th *TranscribeHandler) GetTranscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context() // Context tracks cancellation
+
 	audioID := chi.URLParam(r, "id")
 	if audioID == "" {
 		utils.WriteJSON(w, http.StatusBadRequest, utils.Envelope{"error": "Missing audio_id"})
@@ -93,34 +95,41 @@ func (th *TranscribeHandler) GetTranscription(w http.ResponseWriter, r *http.Req
 	}
 
 	fileName := strings.Split(audioID, ".")[0]
-	file, err := os.Open("transcriptions/" + fileName + ".txt")
-	if err != nil {
-		th.log.Printf("Error opening file: %v", err)
-		utils.WriteJSON(w, http.StatusInternalServerError, utils.Envelope{"error": "Internal server error"})
-		return
-	}
+	filePath := "transcriptions/" + fileName + ".txt"
 
-	defer file.Close()
+	timeout := 30 * time.Second
+	pollInterval := 1 * time.Second
+	start := time.Now()
 
-	buf := make([]byte, 1024)
-	var builder strings.Builder
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
 
 	for {
-		n, err := file.Read(buf)
-		if n > 0 {
-			chunk := buf[:n]
-			builder.Write(chunk)
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		select {
+		case <-ctx.Done():
+			// Client closed the connection or request timed out externally
+			th.log.Printf("Client cancelled request for %s", fileName)
 			return
+
+		case <-ticker.C:
+			// Check if file is ready
+			if _, err := os.Stat(filePath); err == nil {
+				data, err := os.ReadFile(filePath)
+				if err != nil {
+					th.log.Printf("Error reading file: %v", err)
+					utils.WriteJSON(w, http.StatusInternalServerError, utils.Envelope{"error": "Internal server error"})
+					return
+				}
+
+				utils.WriteJSON(w, http.StatusOK, utils.Envelope{"transcription": string(data)})
+				return
+			}
+
+			// Timeout reached → still processing
+			if time.Since(start) > timeout {
+				utils.WriteJSON(w, http.StatusAccepted, utils.Envelope{"status": "pending"})
+				return
+			}
 		}
 	}
-
-	text := builder.String()
-
-	utils.WriteJSON(w, http.StatusOK, utils.Envelope{"transcription": text})
 }

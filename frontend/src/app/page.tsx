@@ -26,32 +26,26 @@ export default function Home() {
 
       const { audio_id } = await response.json();
 
-      const intervalId = setInterval(async () => {
-        const { error, transcription } = await getTranscript(audio_id);
+      await pollTranscription(audio_id);
 
-        if (!error) {
-          setIsLoading(false);
-          setTranscript(transcription.trim());
-          clearInterval(intervalId);
-        }
-      }, 5000);
     } catch (error) {
       console.error(error);
     }
   };
 
-  const getTranscript = async (audio_id: string) => {
-    try {
-      const response = await fetch(`${hostname}/transcribe/${audio_id}`, {
-        method: "GET",
-      });
-      const { transcription } = await response.json();
-      return { error: response.status !== 200, transcription };
-    } catch (error) {
-      setIsLoading(false);
-      return { error: true, transcription: null };
+
+  async function pollTranscription(id: string) {
+    const res = await fetch(`${hostname}/transcribe/${id}`);
+    const data = await res.json();
+
+    if (data.status === "pending") {
+      console.log("Still processing...");
+      setTimeout(() => pollTranscription(id), 2000); // try again in 2s
+    } else {
+      setIsLoading(false)
+      setTranscript(data.transcription)
     }
-  };
+  }
 
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
