@@ -21,29 +21,54 @@ Local web app to transcribe audio in text. Uses _Kafka_ to manage audio transcri
 
 Clone the repository & open it
 
-`git clone https://github.com/imvalerio/transcribeit.git`
+```bash
+git clone https://github.com/imvalerio/transcribeit.git
+cd transcribeit
+```
 
-`cd transcribeit`
+### Start Kafka
 
-Start Kafka:
+```bash
+docker-compose up -d
+```
 
-`docker-compose up -d`
+### Run the backend
 
-Run the backend:
+Create .env file and define two variables:
 
-`go run main.go`
+- **VOICE_RECOGNITION_FOLDER**, where the script to run is located
+- **PYTHON_EXEC_PATH**, abs path of the python which will run the script
 
-Run the frontend:
+Ex:
 
-`cd frontend`
+```bash
+VOICE_RECOGNITION_FOLDER=C:\Users\USER\Documents\transcribeit\voice-recognition
+PYTHON_EXEC_PATH=C:\Users\USER\Documents\transcribeit\voice-recognition\venv\Scripts\python.exe
+```
+
+Run the web server
+
+```bash
+go run main.go
+```
+
+### Run the frontend:
+
+```bash
+cd frontend
+```
 
 Install dependencies:
 
-`npm install`
+```bash
+npm install
+```
 
 Run NextJs locally:
 
-`npm run dev`
+```bash
+npm run dev
+```
 
 ## Python script
 
